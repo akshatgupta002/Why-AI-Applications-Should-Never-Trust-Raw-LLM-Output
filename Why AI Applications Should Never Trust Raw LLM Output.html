@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Why AI Applications Should Never Trust Raw LLM Output · Akshat Gupta</title>
+<meta name="description" content="An essay and interactive demo on validating LLM output before it reaches application logic.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+:root{--bg:#f6f3ec;--card:#fffdf8;--ink:#1d1b18;--mut:#6b655c;--ln:#ddd6c7;--red:#b4340e;--grn:#15803d;--blu:#1d4ed8;--amb:#a16207;--code:#1b1a19;
+--h:Fraunces,Georgia,serif;--s:Inter,system-ui,sans-serif;--b:"Source Serif 4",Georgia,serif;--m:"JetBrains Mono",ui-monospace,Menlo,monospace}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:70px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 var(--s);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}:focus-visible{outline:2px solid var(--blu);outline-offset:3px;border-radius:4px}
+.w{max-width:1100px;margin:0 auto;padding:0 24px}.view{display:none}.view.on{display:block}
+#prog{position:fixed;top:0;left:0;height:3px;width:0;background:var(--red);z-index:50}
+header{position:sticky;top:0;z-index:20;background:rgba(246,243,236,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--ln)}
+nav{display:flex;justify-content:space-between;align-items:center;height:56px;font-size:14px}nav b{font:600 18px var(--h)}nav div{display:flex;gap:22px;color:var(--mut)}nav div a:hover{color:var(--ink)}
+.btn{display:inline-block;padding:11px 20px;border-radius:6px;font-weight:500;font-size:15px;border:1px solid var(--ink);background:none;color:var(--ink);cursor:pointer;font-family:var(--s)}
+.btn:hover{background:#ebe5d6}.btn.p{background:var(--ink);color:var(--bg)}.btn.p:hover{background:#38342e}
+.cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.cta .t{color:var(--mut);border-bottom:1px solid var(--ln)}
+.kick{font:500 12px var(--m);letter-spacing:.06em;text-transform:uppercase;color:var(--red)}
+.hero{padding:72px 0 30px;max-width:800px}
+h1{font:700 clamp(36px,5.4vw,62px)/1.05 var(--h);letter-spacing:-.025em;margin:16px 0 18px}
+.sub{font:400 21px/1.5 var(--b);color:var(--mut);margin:0 0 26px;max-width:640px}
+.zones{display:grid;grid-template-columns:1fr 70px 1fr;margin:36px 0 0;border:1px solid var(--ln);border-radius:12px;overflow:hidden;background:var(--card)}
+.zones>div{padding:22px}.zu{background:repeating-linear-gradient(135deg,#f9eee6 0 10px,#fbf3ec 10px 20px)}
+.zones h4{margin:0 0 10px;font:500 12px var(--m);letter-spacing:.05em;text-transform:uppercase}.zu h4{color:var(--red)}.zt h4{color:var(--grn)}
+.zones li{font:13.5px var(--m);list-style:none;margin:5px 0;padding:6px 10px;border:1px solid var(--ln);border-radius:6px;background:var(--card)}ul.zl{padding:0;margin:0}
+.bd{display:flex;align-items:center;justify-content:center;background:var(--ink);color:#fff;writing-mode:vertical-rl;font:500 12px var(--m);letter-spacing:.14em;position:relative}
+.bd:after{content:"";position:absolute;inset:0;background:linear-gradient(transparent,rgba(255,255,255,.25),transparent);background-size:100% 60px;animation:sw 2.4s linear infinite}@keyframes sw{from{background-position:0 -60px}to{background-position:0 300px}}
+section{padding:64px 0;border-top:1px solid var(--ln);margin-top:56px}
+h2{font:600 32px/1.15 var(--h);letter-spacing:-.015em;margin:0 0 10px}.lead{font:400 19px/1.55 var(--b);color:var(--mut);max-width:660px;margin:0 0 28px}
+.pg{display:grid;grid-template-columns:230px 1fr;gap:20px}
+.smp{display:flex;flex-direction:column;gap:6px}.smp button{text-align:left;padding:10px 12px;border:1px solid var(--ln);border-radius:6px;background:var(--card);font:500 13.5px var(--s);cursor:pointer;color:var(--ink)}
+.smp button[aria-pressed=true]{border-color:var(--ink);background:#ebe5d6}
+.ed{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pane{border:1px solid var(--ln);border-radius:10px;background:var(--card);overflow:hidden}.pane h5{margin:0;padding:8px 14px;border-bottom:1px solid var(--ln);font:500 12px var(--m);color:var(--mut)}
+textarea{width:100%;min-height:230px;border:0;padding:14px;font:13.5px/1.6 var(--m);background:transparent;color:var(--ink);resize:vertical}textarea:focus{outline:none}
+.res{padding:14px;font:13.5px/1.55 var(--s);min-height:230px}.res .row{display:flex;gap:10px;margin:0 0 7px;align-items:flex-start}.res .ic{font:600 13px var(--m);width:18px}.ok{color:var(--grn)}.no{color:var(--red)}.wn{color:var(--amb)}
+.res .v{font:600 15px var(--h);margin:0 0 10px;padding:6px 10px;border-radius:6px;display:inline-block}.v.pass{background:#e2f2e6;color:var(--grn)}.v.fail{background:#f7e2da;color:var(--red)}
+.res code{font:12.5px var(--m);background:#efe9da;padding:1px 5px;border-radius:4px}
+.sch{margin-top:12px;font:12.5px var(--m);color:var(--mut)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.fc{border:1px solid var(--ln);background:var(--card);border-radius:10px;padding:18px}.fc b{font:600 17px var(--h);display:block;margin:2px 0 6px}.fc p{margin:0;font-size:14.5px;color:#4a453e}.fc .kick{font-size:11px}
+.feat{display:grid;grid-template-columns:1.5fr 1fr;border:1px solid var(--ink);border-radius:12px;overflow:hidden;background:var(--card)}.feat>div{padding:32px}
+.feat h3{font:600 28px/1.2 var(--h);margin:8px 0 10px}.feat p{font:18px/1.55 var(--b);color:#4a453e}.feat .sd{background:var(--ink);color:#e8e2d4;font:13px/2 var(--m)}.sd b{color:#f6a27e;font-weight:500}
+.meta{font:13px var(--m);color:var(--mut);margin:12px 0}
+.hn{display:grid;grid-template-columns:1fr 1fr;gap:16px}.hn .fc h4{margin:0 0 6px;font:600 17px var(--h)}
+footer{border-top:1px solid var(--ln);padding:26px 0;color:var(--mut);font-size:14px}
+.code{border-radius:8px;background:var(--code);margin:22px 0;overflow:hidden}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;background:#2a2826;font:12px var(--m);color:#aaa49a}.bar button{font:12px var(--m);background:none;border:1px solid #55504a;color:#c9c3b8;border-radius:4px;padding:2px 9px;cursor:pointer}.bar button:hover{border-color:#fff;color:#fff}.bar u{text-decoration:none;color:#e5b567;margin-left:10px}
+pre{margin:0;padding:14px 0;overflow-x:auto;font:13.5px/1.7 var(--m);color:#e6e1d6;counter-reset:l}pre .l{display:block;white-space:pre;padding-right:16px}.code.n pre .l:before{counter-increment:l;content:counter(l);display:inline-block;width:40px;padding-right:14px;text-align:right;color:#6b665e;user-select:none}.code:not(.n) pre .l{padding-left:16px}
+.k{color:#f0a37f}.s{color:#a8d5a2}.c{color:#8a8479;font-style:italic}.n{color:#8fb8f0}.pm{color:#a8d5a2;user-select:none}
+.art{display:grid;grid-template-columns:200px minmax(0,700px);gap:56px;padding:44px 0 90px;justify-content:center}
+.toc{position:sticky;top:80px;align-self:start;font-size:13.5px}.toc b{display:block;font:500 12px var(--m);color:var(--mut);margin-bottom:8px}.toc a{display:block;padding:3px 0 3px 12px;border-left:2px solid var(--ln);color:var(--mut)}.toc a.on{color:var(--red);border-color:var(--red)}
+article h1{font-size:clamp(30px,4vw,44px)}article h2{font-size:27px;margin:52px 0 12px}article p,article li{font:400 19px/1.7 var(--b);color:#2d2a25}li{margin-bottom:6px}
+article code:not(pre code){font:.85em var(--m);background:#ebe5d6;border-radius:4px;padding:1px 6px}
+.byl{font:13px var(--m);color:var(--mut);display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 12px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}.chips span{font:12px var(--m);border:1px solid var(--ln);border-radius:99px;padding:2px 11px;color:var(--mut);background:var(--card)}
+.co{border-left:3px solid var(--blu);background:var(--card);padding:12px 18px;border-radius:0 8px 8px 0;margin:22px 0}.co p{margin:0;font:400 16.5px/1.6 var(--s)}.co.w2{border-color:var(--amb)}.co.d2{border-color:var(--red)}.co strong{display:block;font:600 12px var(--m);margin-bottom:2px;text-transform:uppercase;letter-spacing:.05em}
+.back{font:14px var(--s);color:var(--mut)}
+table{border-collapse:collapse;width:100%;font:15px var(--s);margin:18px 0}th,td{border:1px solid var(--ln);padding:8px 12px;text-align:left;vertical-align:top}th{background:#ebe5d6}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:12.5px var(--m);margin:18px 0}.flow span{border:1px solid var(--ink);border-radius:6px;padding:6px 12px;background:var(--card)}.flow .g{background:var(--ink);color:#fff}.flow em{font-style:normal;color:var(--red)}
+@media(max-width:860px){.zones,.pg,.ed,.feat,.hn,.art{grid-template-columns:1fr}.bd{writing-mode:horizontal-tb;padding:8px}.toc{display:none}nav div a.x{display:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}html{scroll-behavior:auto}}
+</style></head><body><div id="prog"></div>
+<header><div class="w"><nav><a href="#/"><b>Akshat Gupta</b></a><div><a class="x" href="#/" data-s="demo">Try it</a><a class="x" href="#/" data-s="modes">Failure modes</a><a href="#/" data-s="contact">Contact</a></div></nav></div></header>
+
+<main id="home" class="view on"><div class="w">
+<div class="hero"><div class="kick">AI Engineering · Essay + Interactive Demo</div>
+<h1>Why AI Applications Should Never Trust Raw LLM Output</h1>
+<p class="sub">A language model produces text that looks right. Your application needs data that is right. The gap between them is where bugs, security holes and bad decisions live.</p>
+<div class="cta"><a class="btn p" href="#/article">Read the Essay</a><a class="btn" href="https://github.com/akshatgupta002" target="_blank" rel="noopener">View GitHub</a><a class="t" href="#/" data-s="contact">Contact Me</a></div>
+<div class="zones" aria-label="Untrusted LLM output crosses a validation boundary into trusted application logic">
+ <div class="zu"><h4>Untrusted</h4><ul class="zl"><li>LLM raw text</li><li>Malformed JSON</li><li>Wrong types</li><li>Invented fields</li></ul></div>
+ <div class="bd">VALIDATION BOUNDARY</div>
+ <div class="zt"><h4>Trusted</h4><ul class="zl"><li>Typed objects</li><li>Allowed values only</li><li>Database writes</li><li>API responses &amp; actions</li></ul></div></div></div>
+
+<section id="demo"><h2>Try it: a validation boundary</h2><p class="lead">Pick a pretend model reply, or edit your own, and see what a strict validator does with it. Illustrative schema; all data is made up.</p>
+<div class="pg"><div class="smp" id="smp"></div>
+<div><div class="ed"><div class="pane"><h5>RAW MODEL OUTPUT (editable)</h5><textarea id="ta" spellcheck="false" aria-label="Raw model output"></textarea></div>
+<div class="pane"><h5>VALIDATOR RESULT</h5><div class="res" id="res"></div></div></div>
+<div class="sch">schema: name: non-empty string · age: integer 0–120 · role: "viewer" | "editor" · email: optional, must look like an email · no extra fields</div></div></div></section>
+
+<section id="modes"><h2>Seven ways raw output fails</h2><p class="lead">None of these are exotic. All of them are ordinary behavior of a probabilistic text generator.</p>
+<div class="cards" id="fc"></div></section>
+
+<section><h2>Featured essay</h2><p class="lead">The practical version: how to build the boundary.</p>
+<div class="feat"><div><div class="kick">Python · Pydantic · LLM APIs · Security</div><h3>Why AI Applications Should Never Trust Raw LLM Output</h3>
+<p>Failure modes, a validation layer in FastAPI and Pydantic, bounded retries, and why schema-valid is not the same as true.</p>
+<div class="meta">~12 min read · Intermediate</div><div class="cta"><a class="btn p" href="#/article">Read the Essay</a><a class="btn" href="https://github.com/akshatgupta002" target="_blank" rel="noopener">View Code</a></div></div>
+<div class="sd"><b>raw text</b><br>↓ parse<br>↓ <b>validate schema</b><br>↓ business rules<br>↓ allow-list actions<br>↓ typed, safe result</div></div></section>
+
+<section><h2>Example vs experience</h2><div class="hn"><div class="fc" style="border-color:var(--amb)"><h4>Example implementation</h4><p>Code and scenarios in this essay are teaching examples. They are not a report of a deployed system, and no benchmarks, costs, traffic or accuracy figures are claimed.</p></div>
+<div class="fc" style="border-color:var(--grn)"><h4>Akshat's project experience</h4><p>This portfolio separates teaching examples from verified project claims. See my GitHub for project repositories and implementation details.</p></div></div></section>
+
+<section id="contact"><h2>Contact</h2><p class="lead">Open to technical writing, AI backend tutorials and junior backend roles.</p>
+<div class="cta"><a class="btn p" data-mail href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=akshatgupta7505%40gmail.com" target="_blank" rel="noopener noreferrer" onclick="window.open('https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=akshatgupta7505%40gmail.com', '_blank', 'noopener'); return false;">Email me</a><a class="btn" href="https://github.com/akshatgupta002" target="_blank" rel="noopener">GitHub</a><a class="btn" href="https://www.linkedin.com/in/akshat-gupta-79a91b304" target="_blank" rel="noopener">LinkedIn</a></div>
+<p style="color:var(--mut);font-size:14px;margin-top:22px">Akshat Gupta · Python Backend Developer | AI Engineer | Technical Writer · B.Tech CSE (Data Science), MIET · Expected 2027</p></section>
+</div></main>
+
+<main id="article" class="view"><div class="w"><div class="art"><aside class="toc" id="toc"><b>Contents</b></aside><article id="body">
+<a class="back" href="#/">← Back to portfolio</a>
+<h1>Why AI Applications Should Never Trust Raw LLM Output</h1>
+<div class="byl"><span>Akshat Gupta</span><span>Updated October 2026</span><span>~12 min read</span><span>Intermediate</span></div>
+<div class="chips"><span>Python</span><span>Pydantic</span><span>FastAPI</span><span>LLM APIs</span><span>Security</span></div>
+<div class="co w2"><p><strong>Example implementation</strong>This is a teaching essay with example code. It does not describe a production deployment.</p></div>
+
+<h2 id="a1">1. The core mistake</h2>
+<p>Developers often treat an LLM call like a function call: send input, get a result, use it. But a function has a contract. An LLM has a tendency. Most of the time the reply matches what you asked for, and that is exactly what makes it dangerous: the failures are rare enough to ship past testing and common enough to hit users.</p>
+<p>The rule is simple: <strong>model output is untrusted input</strong>, in the same category as a form field typed by a stranger. You would not put that straight into a SQL query, and you should not put model output straight into your logic either.</p>
+
+<h2 id="a2">2. Seven ways raw output fails</h2>
+<table><tr><th>Failure</th><th>Example</th></tr>
+<tr><td>Malformed structure</td><td>JSON wrapped in markdown fences, trailing commentary, truncated mid-object</td></tr>
+<tr><td>Wrong types</td><td><code>"age": "thirty-two"</code> instead of a number</td></tr>
+<tr><td>Missing fields</td><td>A required key is simply absent</td></tr>
+<tr><td>Extra fields</td><td>Unrequested keys such as <code>is_superuser</code></td></tr>
+<tr><td>Out-of-range values</td><td>A role or status that is not in your enum</td></tr>
+<tr><td>Plausible but wrong</td><td>Valid shape, invented or misread value</td></tr>
+<tr><td>Manipulated output</td><td>Text steered by hostile content in the input (prompt injection)</td></tr></table>
+
+<h2 id="a3">3. Build a validation boundary</h2>
+<div class="flow"><span>LLM text</span><em>→</em><span>parse JSON</span><em>→</em><span class="g">validate schema</span><em>→</em><span>business rules</span><em>→</em><span>application</span></div>
+<p>Nothing before the validator is allowed to touch your database, your API response or your tools. In Python, Pydantic is the natural tool:</p>
+<div class="code n"><div class="bar"><span>python · boundary.py<u>example</u></span><button>Copy</button></div><pre data-l="py">import json
+from typing import Literal, Optional
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+
+class UserDraft(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # reject invented fields
+
+    name: str = Field(min_length=1)
+    age: int = Field(ge=0, le=120)
+    role: Literal["viewer", "editor"]
+    email: Optional[str] = Field(default=None, pattern=r"^[^@\s]+@[^@\s]+$")
+
+
+class UntrustedOutput(Exception):
+    pass
+
+
+def parse_user(text: str) -> UserDraft:
+    try:
+        return UserDraft.model_validate(json.loads(text))
+    except (json.JSONDecodeError, ValidationError) as exc:
+        raise UntrustedOutput(str(exc)) from exc</pre></div>
+<p><code>extra="forbid"</code> matters: by default Pydantic ignores unknown fields, which hides the model inventing keys. Forbidding them makes the invention visible.</p>
+
+<h2 id="a4">4. Schema-valid is not true</h2>
+<p>Validation proves the <em>shape</em> is right. It cannot prove the value is correct: a model can return <code>"age": 34</code> when the document says 43, and every check passes. So add layers beyond the schema:</p>
+<ul><li><strong>Business rules:</strong> dates not in the future, totals that equal the sum of line items, IDs that exist in your database.</li><li><strong>Grounding checks:</strong> for extraction, confirm that the value actually appears in the source text.</li><li><strong>Human review:</strong> for high-stakes data, treat output as a draft a person confirms.</li></ul>
+<div class="co d2"><p><strong>Do not claim more than you checked</strong>Never present a model-extracted value as verified just because it passed the schema.</p></div>
+
+<h2 id="a5">5. Repair and retry, with limits</h2>
+<p>When validation fails, one reasonable response is to send the error back to the model and ask for a corrected reply. Keep it bounded and keep failing closed:</p>
+<div class="code n"><div class="bar"><span>python · retry.py<u>example</u></span><button>Copy</button></div><pre data-l="py">MAX_TRIES = 2
+
+
+async def get_user(prompt: str) -> UserDraft:
+    messages = [{"role": "user", "content": prompt}]
+    for attempt in range(MAX_TRIES + 1):
+        text = await call_llm(messages)  # your provider wrapper
+        try:
+            return parse_user(text)
+        except UntrustedOutput as exc:
+            messages += [
+                {"role": "assistant", "content": text},
+                {"role": "user", "content": f"Invalid: {exc}. Return only corrected JSON."},
+            ]
+    raise UntrustedOutput("model failed validation after retries")</pre></div>
+<p>Retries cost time and money, and a model can fail the same way repeatedly, so cap the attempts and have a defined behavior when they run out: return an error, queue for review, or fall back to manual entry.</p>
+
+<h2 id="a6">6. Structured output features are not a substitute</h2>
+<p>Many providers offer JSON modes or schema-constrained decoding, which reduce malformed output and are worth using where available. They improve the odds; they do not remove the need to validate. Support and strictness differ between providers and models, constrained output still cannot guarantee that values are true, and your own business rules live outside any provider feature. Use them as a first line of defense, with your own validation behind it.</p>
+
+<h2 id="a7">7. Output that triggers actions</h2>
+<p>The risk grows when output is not just stored but acted on. If a model's text becomes a database query, HTML, a shell command or a tool call, then whoever can influence the model's input can influence that action. Prompt injection is exactly this: instructions hidden in a document, web page or email that the model then obeys.</p>
+<ul><li><strong>SQL:</strong> use parameterized queries; never build SQL strings from model text.</li><li><strong>HTML:</strong> escape output before rendering it in a page.</li><li><strong>Tool calls:</strong> keep an allow-list of tools and validate every argument like user input.</li><li><strong>Shell and file paths:</strong> avoid passing model output to them; if unavoidable, restrict to fixed choices.</li><li><strong>Least privilege:</strong> the credentials behind an AI feature should only be able to do what that feature needs.</li></ul>
+<div class="code n"><div class="bar"><span>python · allowlist.py<u>example</u></span><button>Copy</button></div><pre data-l="py">ALLOWED_TOOLS = {"search_orders", "get_invoice"}  # nothing else, ever
+
+
+def run_tool(name: str, args: dict):
+    if name not in ALLOWED_TOOLS:
+        raise PermissionError(f"tool not allowed: {name}")
+    # validate args with a per-tool Pydantic model, then execute
+    ...</pre></div>
+
+<h2 id="a8">8. Fail safe, not silent</h2>
+<p>Decide in advance what happens when output is invalid. The worst choice is quietly using a default that looks like real data. Prefer an explicit error, a flag for human review, or a clearly marked "unknown". Log failures, because the validation-failure rate is one of the few honest quality signals you have.</p>
+<div class="co"><p><strong>Privacy</strong>Do not log full prompts or outputs that contain personal data. Log error types and field names instead.</p></div>
+
+<h2 id="a9">9. Testing the boundary</h2>
+<p>Test the validator with bad outputs on purpose. This needs no model and no network:</p>
+<div class="code n"><div class="bar"><span>python · test_boundary.py<u>example</u></span><button>Copy</button></div><pre data-l="py">import pytest
+
+BAD = [
+    "not json at all",
+    '{"name": "A", "age": "thirty", "role": "viewer"}',
+    '{"name": "A", "age": 30, "role": "admin"}',
+    '{"name": "A", "age": 30, "role": "viewer", "is_superuser": true}',
+    '{"age": 30, "role": "viewer"}',
+]
+
+
+@pytest.mark.parametrize("text", BAD)
+def test_rejects_bad_output(text):
+    with pytest.raises(UntrustedOutput):
+        parse_user(text)</pre></div>
+<p>Beyond that, build a small evaluation set from your own real inputs and measure how often outputs are correct, not just valid. Do not borrow a number from a vendor announcement.</p>
+
+<h2 id="a10">10. Checklist</h2>
+<ul><li>Treat model output as untrusted input.</li><li>Parse, then validate against a strict schema (forbid extras).</li><li>Add business-rule and grounding checks for values that matter.</li><li>Bound retries and fail closed.</li><li>Allow-list tools; parameterize queries; escape output.</li><li>Give AI features least-privilege access.</li><li>Test the validator with deliberately bad outputs.</li><li>Keep a human in the loop for high-stakes decisions.</li></ul>
+
+<h2 id="a11">11. Conclusion</h2>
+<p>An LLM is a useful component with an unusual contract: it is often right and never guaranteed. Put a boundary around it, and let only validated, checked, permissioned data cross into the rest of your system. <a class="back" href="#/" style="color:var(--red)">Back to portfolio →</a></p>
+</article></div></div></main>
+<footer><div class="w">© 2026 Akshat Gupta</div></footer>
+
+<script>
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const RX=/(#.*$)|(f?"[^"\n]*"|'[^'\n]*')|\b(def|import|from|class|return|try|except|raise|async|await|if|for|in|with|as|None|True|False)\b|\b(\d+)\b/gm;
+document.querySelectorAll("pre[data-l]").forEach(p=>{const r=p.textContent;p.dataset.raw=r;p.innerHTML=esc(r).replace(RX,(m,c,s,k,n)=>c?`<span class="c">${m}</span>`:s?`<span class="s">${m}</span>`:k?`<span class="k">${m}</span>`:`<span class="n">${m}</span>`).split("\n").map(l=>'<span class="l">'+(l||" ")+"</span>").join("")});
+document.addEventListener("click", async e => {
+  const b = e.target.closest(".bar button");
+  if (!b) return;
+  const pre = b.closest(".code")?.querySelector("pre");
+  const raw = pre?.dataset.raw;
+  if (typeof raw !== "string") return;
+  const original = b.textContent;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(raw);
+    } else {
+      const field = document.createElement("textarea");
+      field.value = raw;
+      field.setAttribute("readonly", "");
+      field.style.position = "fixed";
+      field.style.opacity = "0";
+      document.body.appendChild(field);
+      field.select();
+      const copied = document.execCommand("copy");
+      field.remove();
+      if (!copied) throw new Error("Clipboard unavailable");
+    }
+    b.textContent = "Copied";
+  } catch (err) {
+    b.textContent = "Copy failed";
+  }
+  setTimeout(() => { b.textContent = original || "Copy"; }, 1400);
+});
+
+/* validator demo */
+const S=[
+["Clean output",'{"name": "Example User", "age": 34, "role": "viewer", "email": "user@example.com"}'],
+["Fenced + commentary",'Sure! Here is the JSON:\n```json\n{"name": "Example User", "age": 34, "role": "viewer"}\n```'],
+["Wrong type",'{"name": "Example User", "age": "thirty-four", "role": "viewer"}'],
+["Missing field",'{"age": 34, "role": "viewer"}'],
+["Role not allowed",'{"name": "Example User", "age": 34, "role": "admin"}'],
+["Invented field",'{"name": "Example User", "age": 34, "role": "viewer", "is_superuser": true}'],
+["Plausible but wrong",'{"name": "Example User", "age": 34, "role": "viewer"}\n// imagine the source document actually says age 43']];
+const smp=document.getElementById("smp"),ta=document.getElementById("ta"),res=document.getElementById("res");
+function check(t){const r=[];let o;
+ try{o=JSON.parse(t)}catch(e){return{r:[["no","Not valid JSON: "+esc(e.message)]],pass:false}}
+ if(!o||typeof o!=="object"||Array.isArray(o))return{r:[["no","Top level must be an object"]],pass:false};
+ const ok=(c,m,b)=>r.push([c?"ok":"no",c?m:b]);
+ ok(typeof o.name==="string"&&o.name.trim(),"<code>name</code> is a non-empty string","<code>name</code> missing or not a non-empty string");
+ ok(Number.isInteger(o.age)&&o.age>=0&&o.age<=120,"<code>age</code> is an integer 0–120","<code>age</code> must be an integer 0–120, got "+esc(JSON.stringify(o.age)));
+ ok(["viewer","editor"].includes(o.role),"<code>role</code> is an allowed value","<code>role</code> must be viewer or editor, got "+esc(JSON.stringify(o.role)));
+ if("email"in o)ok(typeof o.email==="string"&&/^[^@\s]+@[^@\s]+$/.test(o.email),"<code>email</code> looks valid","<code>email</code> is not a valid email");
+ const ex=Object.keys(o).filter(k=>!["name","age","role","email"].includes(k));
+ ok(!ex.length,"no unexpected fields","unexpected fields: "+ex.map(k=>"<code>"+esc(k)+"</code>").join(", "));
+ return{r,pass:r.every(x=>x[0]==="ok")}}
+function run(){const x=check(ta.value);let h=`<div class="v ${x.pass?"pass":"fail"}">${x.pass?"Passed: safe to hand to application logic":"Rejected: never reaches application logic"}</div>`;
+ h+=x.r.map(a=>`<div class="row"><span class="ic ${a[0]}">${a[0]==="ok"?"✓":"✗"}</span><span>${a[1]}</span></div>`).join("");
+ if(x.pass)h+=`<div class="row"><span class="ic wn">!</span><span>Passing proves the <em>shape</em> only. It cannot tell you the values are true. That needs business rules, grounding checks or review.</span></div>`;
+ res.innerHTML=h}
+S.forEach((s,i)=>{const b=document.createElement("button");b.textContent=s[0];b.setAttribute("aria-pressed",i===0);b.onclick=()=>{[...smp.children].forEach(c=>c.setAttribute("aria-pressed",c===b));ta.value=s[1];run()};smp.appendChild(b)});
+ta.value=S[0][1];ta.oninput=()=>{[...smp.children].forEach(c=>c.setAttribute("aria-pressed","false"));run()};run();
+
+/* failure cards */
+const F=[["Malformed structure","Fences, chatter or a cut-off reply break a JSON parser."],["Wrong types","A number arrives as a word, a list as a string."],["Missing fields","Required data is quietly left out."],["Extra fields","Keys you never asked for slip into your data."],["Out-of-range values","Statuses or roles outside your allowed set."],["Plausible but wrong","Looks perfect, passes the schema, is still incorrect."],["Manipulated output","Hostile text in the input steers what the model says."]];
+document.getElementById("fc").innerHTML=F.map((f,i)=>`<div class="fc"><span class="kick">0${i+1}</span><b>${f[0]}</b><p>${f[1]}</p></div>`).join("");
+
+/* toc, progress, router */
+const toc=document.getElementById("toc"),hs=[...document.querySelectorAll("#body h2")];
+hs.forEach(x=>{const a=document.createElement("a");a.href="#"+x.id;a.textContent=x.textContent.replace(/^\d+\.\s*/,"");a.onclick=e=>{e.preventDefault();x.scrollIntoView({behavior:"smooth"})};toc.appendChild(a)});
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)toc.querySelectorAll("a").forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+e.target.id))}),{rootMargin:"-80px 0px -70% 0px"});hs.forEach(x=>io.observe(x));
+const pg=document.getElementById("prog");
+addEventListener("scroll",()=>{if(!document.getElementById("article").classList.contains("on")){pg.style.width=0;return}const r=document.getElementById("body").getBoundingClientRect();pg.style.width=Math.max(0,Math.min(100,-r.top/(r.height-innerHeight)*100))+"%"},{passive:true});
+let tg=null;function route(){const a=location.hash.startsWith("#/article");document.getElementById("home").classList.toggle("on",!a);document.getElementById("article").classList.toggle("on",a);if(a||!tg)scrollTo(0,0);if(!a&&tg){const el=document.getElementById(tg);tg=null;el&&setTimeout(()=>el.scrollIntoView({behavior:"smooth"}),30)}}
+document.addEventListener("click",e=>{const a=e.target.closest("[data-s]");if(a){tg=a.dataset.s;if(location.hash==="#/"||!location.hash){e.preventDefault();route()}}});
+addEventListener("hashchange",route);route();
+</script></body></html>
